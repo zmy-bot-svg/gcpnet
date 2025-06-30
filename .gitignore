@@ -1,0 +1,38 @@
+# 忽略Python的缓存和临时文件
+__pycache__/
+*.pyc
+*.pyo
+
+# 忽略C/C++编译的中间文件和最终产物
+# 因为这些可以在任何机器上重新生成
+*.so
+*.pyd
+*.o
+build/
+
+# 忽略IDE和操作系统的配置文件
+.vscode/
+.idea/
+.DS_Store
+
+# 忽略所有数据集、缓存和输出！(这是最重要的部分)
+# 使用文件夹名称来忽略整个文件夹
+jarvis_cache/
+data/
+output/
+output_base/
+wandb/
+prediction_plots/
+weight/
+*.log
+
+# 忽略其他常见的大文件
+*.pth
+*.pt
+*.pth.tar
+*.pkl
+*.zip
+*.tar.gz
+*.csv
+*.png
+*.jpg

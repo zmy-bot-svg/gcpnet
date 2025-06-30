@@ -1,0 +1,103 @@
+config:
+  project_name: "GCPNet"                 # 项目名称
+  net: "GCPNet"                          # 网络模型的名称
+  output_dir: "./output"                 # 训练模型的输出目录路径
+  self_loop: True                        # 是否在图中添加自环连接，用于增强节点自身特征
+  n_neighbors: 12                        # 每个原子的最近邻居数量，用于构建图结构
+  debug: False                           # 是否运行在调试模式：打印网络结构和优化器信息
+
+netAttributes:                           # 网络模型的属性配置
+  firstUpdateLayers: 4                   # 第一阶更新的层数，用于初步特征提取
+  secondUpdateLayers: 4                  # 第二阶更新的层数，用于深层特征学习
+  atom_input_features: 105               # 原子特征的维度：应该等于[原子初始特征维度 + 邻居数量 + 1]
+  edge_input_features: 50                # 边特征的径向基函数(RBF)维度，用于编码原子间距离
+  triplet_input_features: 40             # 三元组特征的维度，用于编码角度信息
+  embedding_features: 64                 # 嵌入特征的数量，用于特征降维和表示学习
+  hidden_features: 32                    # 隐藏层特征的数量，控制模型复杂度
+  output_features: 1                     # 输出特征的数量，通常为1表示单一属性预测
+  min_edge_distance: 0.0                 # 化学键的最小距离阈值，小于此值的原子对不构成边
+  max_edge_distance: 8.0                 # 化学键的最大距离阈值，大于此值的原子对不构成边
+  link: "identity"                       # 输出层的链接函数：支持"identity"（恒等）、"exp"（指数）、"sigmoid"（S型）
+  batch_size: 64                         # 批处理大小，影响训练速度和内存使用
+  num_workers: 0                         # 数据加载的工作进程数，0表示使用主进程
+  dropout_rate: 0.0                      # GCAO层的丢弃率，用于防止过拟合
+
+hyperParameters:                # 超参数配置
+  lr: 0.001                              # 学习率，控制参数更新的步长
+  optimizer: "AdamW"                     # 优化器类型：支持"AdamW"、"Adam"、"SGD"
+  optimizer_args:                        # 优化器的参数配置
+    weight_decay: 0.00001                # 权重衰减系数，用于L2正则化防止过拟合
+  scheduler: "ReduceLROnPlateau"         # 学习率调度器：支持"ReduceLROnPlateau"（平台降低）、"CosineAnnealingLR"（余弦退火）、"CosineAnnealingWarmRestarts"（余弦退火热重启）
+  scheduler_args:                        # 学习率调度器的参数配置
+    mode: "min"                          # 调度模式："min"表示当监控指标停止下降时降低学习率
+    factor: 0.8                          # 学习率衰减因子，每次调整时学习率乘以此值
+    patience: 10                         # 容忍轮数，监控指标连续多少轮不改善时触发调整
+    min_lr: 0.00001                      # 最小学习率，防止学习率过小导致训练停滞
+    threshold: 0.0002                    # 改善阈值，小于此值的改善被认为是无显著改善
+  seed: 666                              # 随机种子，用于保证实验的可重复性
+  epochs: 500                            # 训练轮数，模型完整遍历数据集的次数
+  patience: 50                           # 早停的容忍轮数，验证集性能连续多少轮不改善时停止训练
+
+data:                               # 数据集配置
+  points: all                            # 使用的数据点数量：支持"all"（全部）或小于数据集总数的具体数字
+  dataset_path: './data'                 # 所有数据集的存储路径
+  dataset_name: '2d'                     # 数据集名称，支持'2d'、'cubic'、'mp18'、'pt'、'mof'等
+  target_name: 'property'                # 目标属性名称，支持'property'（属性）、'formation_energy_per_atom'（每原子形成能）
+  pin_memory: True                       # 是否将数据固定在内存中，可以加速GPU数据传输
+  num_folds: 5                           # 交叉验证的折数，用于模型性能评估
+
+predict:                # 预测配置
+  model_path: 'model.pt'                 # 预训练模型的文件路径
+  output_path: 'output.csv'              # 预测结果的输出文件路径
+
+visualize_args:                # 可视化配置
+  perplexity: 50                         # t-SNE的困惑度参数，控制局部和全局结构的平衡
+  early_exaggeration: 12                 # t-SNE的早期夸张参数，影响初始聚类的紧密程度
+  learning_rate: 300                     # t-SNE的学习率，控制优化过程的步长
+  n_iter: 5000                           # t-SNE的迭代次数，决定算法运行时间和收敛质量
+  verbose: 1                             # t-SNE的详细程度级别，支持0（无输出）、1（进度条）、2（详细信息）
+  random_state: 42                       # t-SNE的随机状态种子，确保可重复性
+
+wandb:                  # Weights & Biases配置  
+  log_enable: True                       # 是否启用wandb日志记录，支持True（启用）、False（禁用）
+  sweep_count: 5                         # 扫描运行的最大次数，用于超参数调优
+  entity: "1548532425-null"                  # wandb的实体名称，参见https://docs.wandb.ai/guides/sweeps/start-sweep-agents
+  sweep_args:                               # 超参数扫描的配置参数
+    method: bayes
+    metric:
+      name: val_mae   # <--- 从 val_loss 改成 val_mae 也是完全可以的
+      goal: minimize  # 目标同样是最小化
+    parameters:                          # 需要调优的超参数定义
+      lr:                                # 学习率的搜索空间
+        distribution: log_uniform_values # 对数均匀分布
+        min: 0.000001                    # 最小值
+        max: 0.1                         # 最大值
+      
+      batch_size:                        # 批大小的搜索空间
+        distribution: q_uniform          # 量化均匀分布
+        q: 8                             # 量化步长
+        min: 32                          # 最小值
+        max: 256                         # 最大值
+
+      dropout_rate:                      # 丢弃率的搜索空间
+        distribution: uniform            # 均匀分布
+        min: 0                           # 最小值
+        max: 0.5                         # 最大值
+
+      firstUpdateLayers:                 # 第一阶更新层数的搜索空间
+        distribution: q_uniform          # 量化均匀分布
+        q: 1                             # 量化步长
+        min: 1                           # 最小值
+        max: 4                           # 最大值
+
+      secondUpdateLayers:                # 第二阶更新层数的搜索空间
+        distribution: q_uniform          # 量化均匀分布
+        q: 1                             # 量化步长
+        min: 1                           # 最小值
+        max: 4                           # 最大值
+
+      hidden_features:                   # 隐藏特征数量的搜索空间
+        distribution: q_uniform          # 量化均匀分布
+        q: 32                            # 量化步长
+        min: 32                          # 最小值
+        max: 256                         # 最大值
